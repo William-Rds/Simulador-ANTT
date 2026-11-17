@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de Frete Mínimo ANTT</title>
+<link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+<header class="top"><div class="in">
+  <img src="data:image/png;base64,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" alt="Eternit">
+  <div>
+    <h1>Calculadora de Frete Mínimo ANTT</h1>
+    <p class="sub">Piso mínimo (CCD × km + CC) com margem de lucro, ICMS da rota e PIS/COFINS.</p>
+  </div>
+</div></header>
+<div class="wrap">
+
+  <div class="card">
+    <h2>Dados da viagem</h2>
+    <div class="grid">
+      <div>
+        <label for="origem">Origem</label>
+        <select id="origem"></select>
+      </div>
+      <div class="field">
+        <label for="destino">Cidade de destino</label>
+        <input type="text" id="destino" autocomplete="off" placeholder="Digite a cidade (ex.: Campinas)">
+        <div class="sugg" id="sugg"></div>
+        <div class="hint" id="destHint"></div>
+      </div>
+      <div>
+        <label for="veic">Tipo de veículo</label>
+        <select id="veic"></select>
+      </div>
+      <div>
+        <label for="margem">Margem de lucro (%)</label>
+        <input type="text" id="margem" inputmode="decimal" value="0">
+        <div class="hint">Calculada sobre o frete final.</div>
+      </div>
+      <div>
+        <label for="pis">PIS/COFINS (%)</label>
+        <input type="text" id="pis" inputmode="decimal" value="9,25">
+      </div>
+      <div>
+        <label for="metodo">Método de cálculo</label>
+        <select id="metodo">
+          <option value="somado">Somado (% sobre o frete final)</option>
+          <option value="cascata">Em cascata (um fator por vez)</option>
+        </select>
+        <div class="hint" id="metodoHint"></div>
+      </div>
+      <div id="rotaBox" style="display:none">
+        <label for="rota">Rota</label>
+        <select id="rota"></select>
+        <div class="hint">Há mais de uma rota para este destino.</div>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div id="manual" style="display:none">
+      <div class="warn">A planilha não traz distância/pedágio para esta rota. Informe manualmente abaixo.</div>
+      <div class="grid" style="margin-top:12px">
+        <div><label for="kmMan">Distância (km)</label><input type="text" id="kmMan" inputmode="decimal" placeholder="ex.: 850"></div>
+        <div><label for="pedMan">Pedágio por eixo (R$)</label><input type="text" id="pedMan" inputmode="decimal" placeholder="0,00"></div>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="usaPed" checked> Incluir pedágio (valor por eixo × nº de eixos do veículo)</label>
+  </div>
+
+  <div class="card">
+    <h2>Pagamento ao motorista e créditos (Lucro Real)</h2>
+    <div class="grid">
+      <div>
+        <label for="tipoMot">Tipo de motorista</label>
+        <select id="tipoMot">
+          <option value="pf">Autônomo — pessoa física (TAC)</option>
+          <option value="simples">Transportadora PJ — Simples Nacional</option>
+          <option value="pj">Transportadora PJ — regime normal</option>
+        </select>
+      </div>
+      <div>
+        <label for="agio">Acima do piso ANTT (%)</label>
+        <input type="text" id="agio" inputmode="decimal" value="0">
+        <div class="hint">0 = paga exatamente o piso ANTT.</div>
+      </div>
+      <div>
+        <label for="irrf">IRRF retido do autônomo (% do frete)</label>
+        <input type="text" id="irrf" inputmode="decimal" value="0">
+        <div class="hint">Base = 10% do frete, pela tabela mensal; por viagem costuma ser isento.</div>
+      </div>
+      <div>
+        <label for="icmsCred">Crédito de ICMS (% do ICMS da rota)</label>
+        <input type="text" id="icmsCred" inputmode="decimal" value="0">
+        <div class="hint">Ex.: 20 se usa crédito outorgado. Confirme com seu contador.</div>
+      </div>
+      <div>
+        <label for="irpj">IRPJ + CSLL sobre a sobra (%)</label>
+        <input type="text" id="irpj" inputmode="decimal" value="0">
+        <div class="hint">0 = mostra a sobra antes do IRPJ/CSLL (34% é a alíquota padrão).</div>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="usaCred" checked> Considerar créditos de PIS/COFINS e ICMS</label>
+  </div>
+
+  <div class="card" id="result"></div>
+  <div class="card" id="mot" style="display:none"></div>
+  <div class="card" id="hist"></div>
+  <div class="card" id="compare" style="display:none"></div>
+
+  <p class="foot">
+    Fórmulas: Piso ANTT = distância × CCD + CC. Base = Piso ANTT + pedágio.
+    Método somado: Frete final = Base ÷ (1 − margem − ICMS − PIS/COFINS), com todos os percentuais incidindo sobre o próprio frete final.
+    Método em cascata: Frete final = Base ÷ (1 − margem) ÷ (1 − PIS/COFINS) ÷ (1 − ICMS), um fator por vez, na ordem da planilha de conferência.
+    O pedágio da planilha é tratado como valor de ida, por eixo.
+  </p>
+</div>
+
+<!-- SDK do Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+</body>
+</html>
