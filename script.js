@@ -205,9 +205,11 @@ function compute(){
 });
 
 function usaPedTxt(p) {
-  return p
-    ? ' + pedágio ' + brl(p)
-    : '';
+  if (!p || isNaN(p) || Number(p) === 0) {
+    return '';
+  }
+
+  return ' + pedágio ' + brl(Number(p));
 }
 
 function renderMot(c,v,icms,margem,pis){
