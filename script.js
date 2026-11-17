@@ -203,6 +203,13 @@ function compute(){
 ['tipoMot','agio','irrf','icmsCred','irpj','usaCred'].forEach(id=>{
   $(id).addEventListener('input',compute); $(id).addEventListener('change',compute);
 });
+
+function usaPedTxt(p) {
+  return p
+    ? ' + pedágio ' + brl(p)
+    : '';
+}
+
 function renderMot(c,v,icms,margem,pis){
   const tipo=$('tipoMot').value, pf=tipo==='pf', cred=$('usaCred').checked;
   const agio=parse($('agio').value)||0, irrfP=parse($('irrf').value)||0;
