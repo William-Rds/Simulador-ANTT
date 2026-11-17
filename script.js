@@ -252,74 +252,775 @@ function renderMot(c,v,icms,margem,pis){
     final:c.final,frete:frete,custo:custo,mb:mb,mbp:mbp,sobra:sobra,pct:pct};
   m.style.display='';
 }
-let lastKm=NaN, lastSnap=null, histMem=[];
-const HKEY='hemell_hist_frete';
-function histLoad(){ try{ return JSON.parse(localStorage.getItem(HKEY)||'[]'); }catch(e){ return histMem; } }
-function histStore(a){ histMem=a; try{ localStorage.setItem(HKEY,JSON.stringify(a)); return true; }catch(e){ return false; } }
-async function salvarHist(){
-  if(!lastSnap) return;
+// ==========================================================
+// HISTÓRICO
+// ==========================================================
 
-  // Mantém o histórico local exatamente como antes.
-  const a=histLoad();
-  a.unshift(Object.assign({id:Date.now(),dt:new Date().toLocaleString('pt-BR')},lastSnap));
-  const ok=histStore(a.slice(0,300));
-  renderHist();
+let lastKm = NaN;
+let lastSnap = null;
+let histMem = [];
 
-  const b=$('btnSalvar');
-  if(b) b.textContent='Salvando...';
+const HKEY = 'hemell_hist_frete';
 
-  // Salva também no Supabase.
-  // Se o banco estiver indisponível, o histórico local continua funcionando.
-  try{
-    const { error } = await supabaseClient
-      .from('cotacoes_antt')
-      .insert({
-        origem: lastSnap.orig,
-        destino: lastSnap.dest,
-        veiculo: lastSnap.veic,
-        distancia: Number(lastSnap.km) || 0,
-        frete_final: Number(lastSnap.final) || 0,
-        tipo_motorista: lastSnap.tipo || '',
-        lucro: Number(lastSnap.sobra) || 0
-      });
 
-    if(error) throw error;
+// ----------------------------------------------------------
+// HISTÓRICO LOCAL
+// ----------------------------------------------------------
 
-    if(b) b.textContent='Salvo ✓';
-  }catch(error){
-    console.error('Supabase: erro ao salvar cotação:', error);
-    if(b) b.textContent=ok ? 'Salvo local ✓' : 'Salvo só nesta sessão';
+function histLoad() {
+  try {
+    return JSON.parse(
+      localStorage.getItem(HKEY) || '[]'
+    );
+  } catch (e) {
+    return histMem;
+  }
+}
+
+
+function histStore(a) {
+  histMem = a;
+
+  try {
+    localStorage.setItem(
+      HKEY,
+      JSON.stringify(a)
+    );
+
+    return true;
+
+  } catch (e) {
+
+    return false;
+  }
+}
+
+
+// ==========================================================
+// SALVAR COTAÇÃO
+// ==========================================================
+
+async function salvarHist() {
+
+  if (!lastSnap) {
+    alert('Faça uma cotação antes de salvar.');
+    return;
   }
 
-  setTimeout(()=>{
-    if($('btnSalvar')) $('btnSalvar').textContent='Salvar no histórico';
-  },1800);
+
+  const btn = $('btnSalvar');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+  }
+
+
+  // --------------------------------------------------------
+  // 1. CRIA CÓPIA LOCAL
+  // --------------------------------------------------------
+
+  const localItem = Object.assign(
+    {
+      id: Date.now(),
+      dt: new Date().toLocaleString('pt-BR')
+    },
+    lastSnap
+  );
+
+
+  const localHistory = histLoad();
+
+  localHistory.unshift(localItem);
+
+  const localOk = histStore(
+    localHistory.slice(0, 300)
+  );
+
+
+  renderHist();
+
+
+  // --------------------------------------------------------
+  // 2. ENVIA PARA SUPABASE
+  // --------------------------------------------------------
+
+  try {
+
+    const payload = {
+
+      origem: lastSnap.orig || '',
+
+      destino: lastSnap.dest || '',
+
+      veiculo: lastSnap.veic || '',
+
+      distancia:
+        Number(lastSnap.km) || 0,
+
+      frete_final:
+        Number(lastSnap.final) || 0,
+
+      tipo_motorista:
+        lastSnap.tipo || '',
+
+      lucro:
+        Number(lastSnap.sobra) || 0,
+
+
+      // Dados adicionais do cálculo
+
+      frete_motorista:
+        Number(lastSnap.frete) || 0,
+
+      custo_motorista:
+        Number(lastSnap.custo) || 0,
+
+      margem_bruta:
+        Number(lastSnap.mb) || 0,
+
+      margem_bruta_pct:
+        Number(lastSnap.mbp) || 0,
+
+      sobra:
+        Number(lastSnap.sobra) || 0,
+
+      sobra_pct:
+        Number(lastSnap.pct) || 0
+    };
+
+
+    const { data, error } =
+      await supabaseClient
+        .from('cotacoes_antt')
+        .insert(payload)
+        .select()
+        .single();
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    // Guarda o ID real do Supabase
+    // na cópia local.
+
+    if (data && data.id) {
+
+      localItem.supabase_id =
+        data.id;
+
+    }
+
+
+    if (btn) {
+      btn.textContent =
+        'Salvo na nuvem ✓';
+    }
+
+
+    // ------------------------------------------------------
+    // 3. RECARREGA O HISTÓRICO DO BANCO
+    // ------------------------------------------------------
+
+    await carregarHistoricoSupabase();
+
+
+  } catch (error) {
+
+    console.error(
+      'Supabase: erro ao salvar cotação:',
+      error
+    );
+
+
+    if (btn) {
+
+      if (localOk) {
+
+        btn.textContent =
+          'Salvo somente local ✓';
+
+      } else {
+
+        btn.textContent =
+          'Erro ao salvar';
+
+      }
+    }
+  }
+
+
+  // --------------------------------------------------------
+  // 4. RESTAURA BOTÃO
+  // --------------------------------------------------------
+
+  setTimeout(() => {
+
+    const b = $('btnSalvar');
+
+    if (b) {
+
+      b.disabled = false;
+
+      b.textContent =
+        'Salvar no histórico';
+    }
+
+  }, 1800);
 }
-function delHist(id){ histStore(histLoad().filter(x=>x.id!==id)); renderHist(); }
-function limparHist(){ if(confirm('Apagar todo o histórico de cálculos?')){ histStore([]); renderHist(); } }
-function exportHist(){
-  const a=histLoad(), n=x=>(+x).toFixed(2).replace('.',',');
-  const rows=[['Data','Origem','Destino','Km','Veículo','Motorista','Frete final','Frete motorista','Custo total motorista','Margem bruta R$','Margem bruta %','Sobra R$','Sobra %']]
-    .concat(a.map(h=>[h.dt,h.orig,h.dest,Math.round(h.km),h.veic,h.tipo,n(h.final),n(h.frete),n(h.custo),n(h.mb),n(h.mbp),n(h.sobra),n(h.pct)]));
-  const csv='\ufeff'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\r\n');
-  const u=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-  const l=document.createElement('a'); l.href=u; l.download='historico_fretes.csv'; document.body.appendChild(l); l.click(); l.remove(); URL.revokeObjectURL(u);
+
+
+// ==========================================================
+// CARREGAR HISTÓRICO DO SUPABASE
+// ==========================================================
+
+async function carregarHistoricoSupabase() {
+
+  try {
+
+    const {
+      data,
+      error
+    } = await supabaseClient
+
+      .from('cotacoes_antt')
+
+      .select(`
+        id,
+        criado_em,
+        origem,
+        destino,
+        veiculo,
+        distancia,
+        frete_final,
+        tipo_motorista,
+        lucro,
+        frete_motorista,
+        custo_motorista,
+        margem_bruta,
+        margem_bruta_pct,
+        sobra,
+        sobra_pct
+      `)
+
+      .order(
+        'criado_em',
+        {
+          ascending: false
+        }
+      )
+
+      .limit(300);
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    // ------------------------------------------------------
+    // TRANSFORMA OS DADOS DO SUPABASE
+    // NO MESMO FORMATO DO HISTÓRICO LOCAL
+    // ------------------------------------------------------
+
+    const cloud =
+      (data || []).map(x => ({
+
+        id:
+          Number(x.id),
+
+        supabase_id:
+          Number(x.id),
+
+        dt:
+          x.criado_em
+            ? new Date(
+                x.criado_em
+              ).toLocaleString('pt-BR')
+            : '',
+
+        orig:
+          x.origem || '',
+
+        dest:
+          x.destino || '',
+
+        km:
+          Number(x.distancia) || 0,
+
+        veic:
+          x.veiculo || '',
+
+        tipo:
+          x.tipo_motorista || '',
+
+        final:
+          Number(x.frete_final) || 0,
+
+        frete:
+          Number(x.frete_motorista) || 0,
+
+        custo:
+          Number(x.custo_motorista) || 0,
+
+        mb:
+          Number(x.margem_bruta) || 0,
+
+        mbp:
+          Number(x.margem_bruta_pct) || 0,
+
+        sobra:
+          Number(x.sobra) || 0,
+
+        pct:
+          Number(x.sobra_pct) || 0
+
+      }));
+
+
+    // ------------------------------------------------------
+    // O SUPABASE PASSA A SER A FONTE PRINCIPAL
+    // ------------------------------------------------------
+
+    histStore(cloud);
+
+    renderHist();
+
+    return true;
+
+
+  } catch (error) {
+
+    console.error(
+      'Supabase: erro ao carregar histórico:',
+      error
+    );
+
+
+    // Se não conseguir acessar o Supabase,
+    // mantém o histórico local.
+
+    renderHist();
+
+    return false;
+  }
 }
-function renderHist(){
-  const a=histLoad(), h=$('hist');
-  if(!a.length){ h.style.display='none'; return; }
-  h.style.display='';
-  h.innerHTML=`<h2>Histórico de cálculos (${a.length})</h2>
-    <div class="hwrap"><table><tr><th>Data</th><th>Rota</th><th>Veículo</th><th>Motorista</th><th class="r">Frete final</th><th class="r">Custo motorista</th><th class="r">Margem bruta</th><th class="r">Sobra</th><th></th></tr>
-    ${a.map(x=>`<tr><td>${x.dt}</td><td>${x.orig} → ${x.dest} (${num(x.km,0)} km)</td><td>${x.veic}</td><td>${x.tipo}</td><td class="r">${brl(x.final)}</td><td class="r">${brl(x.custo)}</td><td class="r">${brl(x.mb)} (${num(x.mbp)}%)</td><td class="r">${brl(x.sobra)} (${num(x.pct)}%)</td><td><button class="btn x" title="Remover" onclick="delHist(${x.id})">×</button></td></tr>`).join('')}
-    </table></div>
-    <div class="hbar"><button class="btn sec" onclick="exportHist()">Exportar CSV</button><button class="btn sec" onclick="limparHist()">Limpar histórico</button></div>`;
+
+
+// ==========================================================
+// EXCLUIR UMA COTAÇÃO
+// ==========================================================
+
+async function delHist(id) {
+
+  if (!confirm(
+    'Deseja excluir esta cotação do histórico?'
+  )) {
+    return;
+  }
+
+
+  const numericId =
+    Number(id);
+
+
+  // --------------------------------------------------------
+  // TENTA EXCLUIR DO SUPABASE
+  // --------------------------------------------------------
+
+  try {
+
+    const {
+      error
+    } = await supabaseClient
+
+      .from('cotacoes_antt')
+
+      .delete()
+
+      .eq('id', numericId);
+
+
+    if (error) {
+      throw error;
+    }
+
+
+  } catch (error) {
+
+    console.error(
+      'Supabase: erro ao excluir:',
+      error
+    );
+
+
+    alert(
+      'Não foi possível excluir a cotação do banco.'
+    );
+
+    return;
+  }
+
+
+  // --------------------------------------------------------
+  // ATUALIZA A TELA
+  // --------------------------------------------------------
+
+  const atual =
+    histLoad().filter(
+      x => Number(x.id) !== numericId
+    );
+
+
+  histStore(atual);
+
+  renderHist();
 }
+
+
+// ==========================================================
+// LIMPAR TODO O HISTÓRICO
+// ==========================================================
+
+async function limparHist() {
+
+  if (!confirm(
+    'Apagar todo o histórico de cálculos?'
+  )) {
+    return;
+  }
+
+
+  try {
+
+    const {
+      error
+    } = await supabaseClient
+
+      .from('cotacoes_antt')
+
+      .delete()
+      
+      .not('id', 'is', null);
+
+
+    if (error) {
+      throw error;
+    }
+
+
+  } catch (error) {
+
+    console.error(
+      'Supabase: erro ao limpar histórico:',
+      error
+    );
+
+
+    alert(
+      'Não foi possível limpar o histórico do banco.'
+    );
+
+    return;
+  }
+
+
+  histStore([]);
+
+  renderHist();
+}
+
+
+// ==========================================================
+// EXPORTAR CSV
+// ==========================================================
+
+function exportHist() {
+
+  const a =
+    histLoad();
+
+
+  const n = x =>
+    Number(x || 0)
+      .toFixed(2)
+      .replace('.', ',');
+
+
+  const rows = [
+
+    [
+      'Data',
+      'Origem',
+      'Destino',
+      'Km',
+      'Veículo',
+      'Motorista',
+      'Frete final',
+      'Frete motorista',
+      'Custo total motorista',
+      'Margem bruta R$',
+      'Margem bruta %',
+      'Sobra R$',
+      'Sobra %'
+    ]
+
+  ].concat(
+
+    a.map(h => [
+
+      h.dt,
+
+      h.orig,
+
+      h.dest,
+
+      Math.round(
+        Number(h.km) || 0
+      ),
+
+      h.veic,
+
+      h.tipo,
+
+      n(h.final),
+
+      n(h.frete),
+
+      n(h.custo),
+
+      n(h.mb),
+
+      n(h.mbp),
+
+      n(h.sobra),
+
+      n(h.pct)
+
+    ])
+
+  );
+
+
+  const csv =
+    '\ufeff' +
+
+    rows.map(row =>
+
+      row
+        .map(c =>
+          '"' +
+          String(c)
+            .replace(/"/g, '""') +
+          '"'
+        )
+        .join(';')
+
+    ).join('\r\n');
+
+
+  const u =
+    URL.createObjectURL(
+      new Blob(
+        [csv],
+        {
+          type:
+            'text/csv;charset=utf-8'
+        }
+      )
+    );
+
+
+  const l =
+    document.createElement('a');
+
+
+  l.href = u;
+
+  l.download =
+    'historico_fretes.csv';
+
+  document.body.appendChild(l);
+
+  l.click();
+
+  l.remove();
+
+  URL.revokeObjectURL(u);
+}
+
+
+// ==========================================================
+// RENDERIZAR HISTÓRICO
+// ==========================================================
+
+function renderHist() {
+
+  const a =
+    histLoad();
+
+  const h =
+    $('hist');
+
+
+  if (!a.length) {
+
+    h.style.display = 'none';
+
+    return;
+  }
+
+
+  h.style.display = '';
+
+
+  h.innerHTML = `
+
+    <h2>
+      Histórico de cálculos (${a.length})
+    </h2>
+
+
+    <div class="hwrap">
+
+      <table>
+
+        <tr>
+
+          <th>Data</th>
+
+          <th>Rota</th>
+
+          <th>Veículo</th>
+
+          <th>Motorista</th>
+
+          <th class="r">
+            Frete final
+          </th>
+
+          <th class="r">
+            Custo motorista
+          </th>
+
+          <th class="r">
+            Margem bruta
+          </th>
+
+          <th class="r">
+            Sobra
+          </th>
+
+          <th></th>
+
+        </tr>
+
+
+        ${a.map(x => `
+
+          <tr>
+
+            <td>
+              ${x.dt}
+            </td>
+
+
+            <td>
+              ${x.orig}
+              →
+              ${x.dest}
+              (${num(x.km,0)} km)
+            </td>
+
+
+            <td>
+              ${x.veic}
+            </td>
+
+
+            <td>
+              ${x.tipo}
+            </td>
+
+
+            <td class="r">
+              ${brl(x.final)}
+            </td>
+
+
+            <td class="r">
+              ${brl(x.custo)}
+            </td>
+
+
+            <td class="r">
+              ${brl(x.mb)}
+              (${num(x.mbp)}%)
+            </td>
+
+
+            <td class="r">
+              ${brl(x.sobra)}
+              (${num(x.pct)}%)
+            </td>
+
+
+            <td>
+
+              <button
+                class="btn x"
+                title="Remover"
+                onclick="delHist(${Number(x.id)})"
+              >
+                ×
+              </button>
+
+            </td>
+
+          </tr>
+
+        `).join('')}
+
+      </table>
+
+    </div>
+
+
+    <div class="hbar">
+
+      <button
+        class="btn sec"
+        onclick="exportHist()"
+      >
+        Exportar CSV
+      </button>
+
+
+      <button
+        class="btn sec"
+        onclick="limparHist()"
+      >
+        Limpar histórico
+      </button>
+
+    </div>
+
+  `;
+}
+
+
+// ==========================================================
+// INICIALIZAÇÃO DO HISTÓRICO
+// ==========================================================
+
+// Primeiro mostra rapidamente o histórico local.
+// Depois substitui pelo histórico compartilhado
+// do Supabase.
+
 renderHist();
-function usaPedTxt(p){ return p?' + pedágio '+brl(p):''; }
-$('compare').addEventListener('click',e=>{
-  const tr = e.target.closest('tr[data-v]'); if(!tr) return;
-  $('veic').value = tr.dataset.v; compute();
-});
+
+carregarHistoricoSupabase();
 
 compute();
